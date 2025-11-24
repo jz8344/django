@@ -28,85 +28,74 @@ def health_check(request):
 @csrf_exempt
 def generar_ruta(request):
     """
-    Genera una ruta optimizada usando k-Means clustering y TSP
+    Genera ruta optimizada con k-Means + TSP
     
-    Request body:
+    Payload esperado:
     {
-        "viaje_id": int,
-        "capacidad_unidad": int,
-        "destino": {
-            "nombre": str,
-            "direccion": str,
-            "latitud": float,
-            "longitud": float
-        },
-        "puntos_recogida": [
+        "viaje_id": 1,
+        "puntos": [
             {
-                "confirmacion_id": int,
-                "hijo_id": int,
-                "nombre": str,
-                "direccion": str,
-                "referencia": str,
-                "latitud": float,
-                "longitud": float,
-                "prioridad": str
-            },
-            ...
+                "confirmacion_id": 1,
+                "hijo_id": 1,
+                "hijo_nombre": "Juan Perez",
+                "latitud": 20.6736,
+                "longitud": -103.3444,
+                "direccion": "Av. Juárez 123",
+                "referencia": "Casa azul"
+            }
         ],
-        "hora_salida": str (HH:MM:SS)
+        "destino": {
+            "escuela_id": 1,
+            "nombre": "COBAEJ 21",
+            "latitud": 20.6597,
+            "longitud": -103.3496,
+            "direccion": "Av. Mariano Otero 1555"
+        },
+        "hora_salida": "07:00:00",
+        "capacidad": 50,
+        "webhook_url": "https://tu-laravel-backend.com/api/webhook/ruta-generada"
     }
     """
     try:
+        # 1. Validar datos recibidos
         data = request.data
         
-        # Validar datos de entrada
         viaje_id = data.get('viaje_id')
-        capacidad = data.get('capacidad_unidad')
+        puntos = data.get('puntos', [])
         destino = data.get('destino')
-        puntos = data.get('puntos_recogida', [])
         hora_salida = data.get('hora_salida', '07:00:00')
+        capacidad = data.get('capacidad', 50)
+        webhook_url = data.get('webhook_url')
         
-        if not all([viaje_id, capacidad, destino, puntos]):
+        if not viaje_id or not puntos or not destino:
             return Response({
-                'success': False,
                 'error': 'Datos incompletos',
-                'message': 'Faltan campos requeridos'
-            }, status=422)
+                'message': 'Se requiere viaje_id, puntos y destino'
+            }, status=400)
         
-        # Validar capacidad
-        if len(puntos) > capacidad:
+        if len(puntos) < 1:
             return Response({
-                'success': False,
-                'error': 'Capacidad insuficiente',
-                'message': f'Se requieren {len(puntos)} lugares pero la unidad solo tiene {capacidad} asientos'
-            }, status=422)
+                'error': 'Sin confirmaciones',
+                'message': 'Debe haber al menos 1 punto de recogida'
+            }, status=400)
         
-        if len(puntos) == 0:
-            return Response({
-                'success': False,
-                'error': 'Sin puntos de recogida',
-                'message': 'No hay confirmaciones para este viaje'
-            }, status=422)
+        # 2. Ejecutar algoritmo k-Means + TSP
+        resultado = ejecutar_kmeans_tsp(puntos, destino, hora_salida, capacidad)
         
-        # Ejecutar algoritmo k-Means
-        ruta_optimizada = ejecutar_kmeans_tsp(puntos, destino, hora_salida, capacidad)
+        # 3. Enviar resultado a Laravel vía webhook
+        if webhook_url:
+            resultado['viaje_id'] = viaje_id
+            enviar_resultado_a_laravel(webhook_url, viaje_id, resultado)
         
-        # Enviar resultado a Laravel (webhook)
-        enviar_resultado_a_laravel(viaje_id, ruta_optimizada)
-        
-        # Retornar resultado
+        # 4. Retornar resultado
         return Response({
             'success': True,
             'viaje_id': viaje_id,
-            'ruta_optimizada': ruta_optimizada['paradas'],
-            'distancia_total_km': ruta_optimizada['distancia_total_km'],
-            'tiempo_total_min': ruta_optimizada['tiempo_total_min'],
-            'parametros': ruta_optimizada['parametros']
-        })
+            'ruta': resultado
+        }, status=200)
         
     except Exception as e:
         return Response({
-            'success': False,
             'error': 'Error al generar ruta',
             'message': str(e)
         }, status=500)
@@ -350,37 +339,26 @@ def calcular_con_google_maps(origen, destino):
         raise Exception(f"Google Maps API error: {data['status']}")
 
 
-def enviar_resultado_a_laravel(viaje_id, resultado):
+def enviar_resultado_a_laravel(webhook_url, viaje_id, resultado):
     """
-    Envía el resultado de la ruta generada a Laravel mediante webhook
+    Envía el resultado de la generación de ruta a Laravel mediante webhook
     """
-    if not settings.LARAVEL_WEBHOOK_URL:
-        return  # No enviar si no está configurado
-    
     try:
         payload = {
             'viaje_id': viaje_id,
-            'distancia_total_km': resultado['distancia_total_km'],
-            'tiempo_estimado_minutos': resultado['tiempo_total_min'],
-            'algoritmo_utilizado': 'k-means-tsp',
-            'parametros_algoritmo': resultado['parametros'],
-            'paradas': resultado['paradas']
-        }
-        
-        headers = {
-            'Content-Type': 'application/json',
-            'X-Webhook-Secret': settings.WEBHOOK_SECRET
+            'ruta': resultado
         }
         
         response = requests.post(
-            settings.LARAVEL_WEBHOOK_URL,
+            webhook_url,
             json=payload,
-            headers=headers,
             timeout=30
         )
         
-        if response.status_code != 200:
-            print(f"Error al enviar webhook a Laravel: {response.status_code}")
-    
+        if response.status_code == 200:
+            print(f"✅ Ruta enviada exitosamente a Laravel para viaje {viaje_id}")
+        else:
+            print(f"⚠️ Error al enviar ruta a Laravel: {response.status_code}")
+            print(response.text)
     except Exception as e:
-        print(f"Excepción al enviar webhook: {str(e)}")
+        print(f"❌ Error al enviar resultado a Laravel: {str(e)}")
