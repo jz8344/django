@@ -53,12 +53,22 @@ def generar_ruta(request):
         },
         "hora_salida": "07:00:00",
         "capacidad": 50,
-        "webhook_url": "https://tu-laravel-backend.com/api/webhook/ruta-generada"
+        "webhook_url": "https://web-production-86356.up.railway.app/api/webhook/ruta-generada"
     }
+    
+    NOTA: Este servicio Django debe estar desplegado en:
+    https://django-production-8d43.up.railway.app
     """
     try:
         # 1. Validar datos recibidos
         data = request.data
+        
+        # Log de recepción
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"📥 Solicitud recibida de generación de ruta para viaje: {data.get('viaje_id')}")
+        logger.info(f"Puntos recibidos: {len(data.get('puntos', []))}")
+        logger.info(f"Webhook URL: {data.get('webhook_url')}")
         
         viaje_id = data.get('viaje_id')
         puntos = data.get('puntos', [])
@@ -343,11 +353,17 @@ def enviar_resultado_a_laravel(webhook_url, viaje_id, resultado):
     """
     Envía el resultado de la generación de ruta a Laravel mediante webhook
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
         payload = {
             'viaje_id': viaje_id,
             'ruta': resultado
         }
+        
+        logger.info(f"📤 Enviando ruta a Laravel: {webhook_url}")
+        logger.info(f"Payload: viaje_id={viaje_id}, paradas={len(resultado.get('paradas', []))}")
         
         response = requests.post(
             webhook_url,
@@ -356,9 +372,13 @@ def enviar_resultado_a_laravel(webhook_url, viaje_id, resultado):
         )
         
         if response.status_code == 200:
+            logger.info(f"✅ Ruta enviada exitosamente a Laravel para viaje {viaje_id}")
             print(f"✅ Ruta enviada exitosamente a Laravel para viaje {viaje_id}")
         else:
+            logger.error(f"⚠️ Error al enviar ruta a Laravel: {response.status_code}")
+            logger.error(f"Respuesta: {response.text}")
             print(f"⚠️ Error al enviar ruta a Laravel: {response.status_code}")
             print(response.text)
     except Exception as e:
+        logger.error(f"❌ Error al enviar resultado a Laravel: {str(e)}")
         print(f"❌ Error al enviar resultado a Laravel: {str(e)}")
