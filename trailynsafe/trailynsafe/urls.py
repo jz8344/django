@@ -20,6 +20,8 @@ from trailynapp import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', views.health_check, name='home'),  # Root para Railway
     path('health', views.health_check, name='health'),
+    path('health/', views.health_check, name='health_slash'),
     path('api/generar-ruta', views.generar_ruta, name='generar_ruta'),
 ]
