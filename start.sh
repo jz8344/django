@@ -21,7 +21,10 @@ gunicorn trailynsafe.wsgi:application \
   --bind 0.0.0.0:$PORT \
   --workers 2 \
   --threads 4 \
-  --timeout 120 \
+  --timeout 300 \
+  --graceful-timeout 300 \
+  --keep-alive 5 \
+  --worker-class gthread \
   --access-logfile - \
   --error-logfile - \
   --log-level info
