@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["python3", "postgresql_16.dev"]
+
+[phases.install]
+cmds = [
+  "python -m venv --copies /opt/venv",
+  ". /opt/venv/bin/activate && pip install -r requirements.txt"
+]
+
+[start]
+cmd = "cd trailynsafe && python manage.py migrate --noinput && gunicorn trailynsafe.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --log-level info --access-logfile - --error-logfile -"
