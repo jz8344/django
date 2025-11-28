@@ -8,4 +8,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd trailynsafe && python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:$PORT --noreload"
+cmd = "cd trailynsafe && python manage.py migrate --fake-initial --noinput && python manage.py runserver 0.0.0.0:$PORT --noreload"
