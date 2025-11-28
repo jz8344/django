@@ -1,14 +1,12 @@
 """
 Vista simple para endpoint de status
 """
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
+from django.http import JsonResponse
 
 
-@api_view(['GET'])
 def status_check(request):
     """Endpoint de status para Railway"""
-    return Response({
+    return JsonResponse({
         'status': 'ok',
         'message': 'running'
     })
