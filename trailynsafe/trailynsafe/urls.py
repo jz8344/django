@@ -1,8 +1,7 @@
 """
-"""
 URL configuration for trailynsafe project.
 """
-from django.contrib import admin # Added for admin.site.urls
+from django.contrib import admin
 from django.urls import path
 from trailynapp import views
 
