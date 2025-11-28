@@ -173,7 +173,5 @@ REST_FRAMEWORK = {
     ],
 }
 
-# K-Means y Google Maps Configuration
-GOOGLE_MAPS_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY', '')
-LARAVEL_WEBHOOK_URL = os.getenv('LARAVEL_WEBHOOK_URL', '')
-WEBHOOK_SECRET = os.getenv('WEBHOOK_SECRET', 'shared_secret_token_change_in_production')
+# Application Configuration
+# Add any custom settings here if needed
